@@ -1,27 +1,29 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
+const { authenticateToken } = require('../middleware/authMiddleware');
 const {
   validateCreateProduct,
   validateUpdateProduct,
   validatePatchProduct
 } = require('../middleware/validateProduct');
 
-// Product stats endpoint (placed before :id route to avoid route conflict)
+// Product stats endpoint (Public)
 router.get('/stats', productController.getProductStats);
 
-// Database re-seed endpoint
-router.post('/seed', productController.seedProducts);
+// Database re-seed endpoint (Protected)
+router.post('/seed', authenticateToken, productController.seedProducts);
 
-// Standard CRUD Endpoints
+// Public List / Protected Create
 router.route('/')
   .get(productController.getAllProducts)
-  .post(validateCreateProduct, productController.createProduct);
+  .post(authenticateToken, validateCreateProduct, productController.createProduct);
 
+// Public Read / Protected Update & Delete
 router.route('/:id')
   .get(productController.getProductById)
-  .put(validateUpdateProduct, productController.updateProduct)
-  .patch(validatePatchProduct, productController.patchProduct)
-  .delete(productController.deleteProduct);
+  .put(authenticateToken, validateUpdateProduct, productController.updateProduct)
+  .patch(authenticateToken, validatePatchProduct, productController.patchProduct)
+  .delete(authenticateToken, productController.deleteProduct);
 
 module.exports = router;

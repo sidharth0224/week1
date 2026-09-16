@@ -33,7 +33,26 @@ async function initDatabase(customPath) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // Seed default admin user if users table is empty
+  const userCount = await dbInstance.get('SELECT COUNT(*) as count FROM users');
+  if (userCount.count === 0) {
+    const bcrypt = require('bcryptjs');
+    const adminPasswordHash = await bcrypt.hash('admin123', 10);
+    await dbInstance.run(
+      'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+      ['Admin User', 'admin@example.com', adminPasswordHash]
+    );
+  }
 
   // Seed sample products if table is empty
   const countResult = await dbInstance.get('SELECT COUNT(*) as count FROM products');

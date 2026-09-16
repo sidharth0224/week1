@@ -1,9 +1,9 @@
 /**
  * Centralized API Service Helper Module
- * Manages all HTTP requests to the Product Inventory REST API
+ * Manages all HTTP requests to the Product Inventory REST API with JWT Auth
  */
 
-const API_BASE_URL = '/api/v1/products';
+const API_BASE_URL = '/api/v1';
 
 class ApiServiceError extends Error {
   constructor(message, statusCode, code, details = null) {
@@ -16,13 +16,16 @@ class ApiServiceError extends Error {
 }
 
 /**
- * Generic fetch wrapper with automatic error parsing and standard payload formatting.
+ * Generic fetch wrapper with automatic JWT Bearer token attachment and error parsing.
  */
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
+  const token = localStorage.getItem('token');
+
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers
   };
 
@@ -47,7 +50,6 @@ async function apiRequest(endpoint, options = {}) {
     if (err instanceof ApiServiceError) {
       throw err;
     }
-    // Network failure or offline error
     throw new ApiServiceError(
       'Unable to connect to backend server. Please verify your Express API is running on port 3000.',
       0,
@@ -56,14 +58,57 @@ async function apiRequest(endpoint, options = {}) {
   }
 }
 
+export const authService = {
+  async signup(username, email, password) {
+    const res = await apiRequest('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password })
+    });
+    if (res.data?.token) {
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+    }
+    return res.data;
+  },
+
+  async login(email, password) {
+    const res = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    if (res.data?.token) {
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+    }
+    return res.data;
+  },
+
+  async getMe() {
+    return await apiRequest('/auth/me', { method: 'GET' });
+  },
+
+  logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  },
+
+  getCurrentUser() {
+    const userStr = localStorage.getItem('user');
+    try {
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  getToken() {
+    return localStorage.getItem('token');
+  }
+};
+
 export const apiService = {
-  /**
-   * GET /api/v1/products
-   * Fetch paginated & filtered list of products
-   */
   async getProducts(params = {}) {
     const query = new URLSearchParams();
-    
     if (params.search) query.append('search', params.search);
     if (params.category) query.append('category', params.category);
     if (params.status) query.append('status', params.status);
@@ -75,71 +120,43 @@ export const apiService = {
     if (params.limit) query.append('limit', params.limit || 20);
 
     const queryString = query.toString() ? `?${query.toString()}` : '';
-    return await apiRequest(queryString, { method: 'GET' });
+    return await apiRequest(`/products${queryString}`, { method: 'GET' });
   },
 
-  /**
-   * GET /api/v1/products/stats
-   * Fetch aggregate inventory metrics
-   */
   async getStats() {
-    return await apiRequest('/stats', { method: 'GET' });
+    return await apiRequest('/products/stats', { method: 'GET' });
   },
 
-  /**
-   * GET /api/v1/products/:id
-   * Fetch single product by ID
-   */
   async getProductById(id) {
-    return await apiRequest(`/${id}`, { method: 'GET' });
+    return await apiRequest(`/products/${id}`, { method: 'GET' });
   },
 
-  /**
-   * POST /api/v1/products
-   * Create a new product
-   */
   async createProduct(productData) {
-    return await apiRequest('', {
+    return await apiRequest('/products', {
       method: 'POST',
       body: JSON.stringify(productData)
     });
   },
 
-  /**
-   * PUT /api/v1/products/:id
-   * Complete update of an existing product
-   */
   async updateProduct(id, productData) {
-    return await apiRequest(`/${id}`, {
+    return await apiRequest(`/products/${id}`, {
       method: 'PUT',
       body: JSON.stringify(productData)
     });
   },
 
-  /**
-   * PATCH /api/v1/products/:id
-   * Partial update of a product
-   */
   async patchProduct(id, patchData) {
-    return await apiRequest(`/${id}`, {
+    return await apiRequest(`/products/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(patchData)
     });
   },
 
-  /**
-   * DELETE /api/v1/products/:id
-   * Delete a product by ID
-   */
   async deleteProduct(id) {
-    return await apiRequest(`/${id}`, { method: 'DELETE' });
+    return await apiRequest(`/products/${id}`, { method: 'DELETE' });
   },
 
-  /**
-   * POST /api/v1/products/seed
-   * Reset database and seed sample products
-   */
   async seedDatabase() {
-    return await apiRequest('/seed', { method: 'POST' });
+    return await apiRequest('/products/seed', { method: 'POST' });
   }
 };

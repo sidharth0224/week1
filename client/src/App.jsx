@@ -4,20 +4,26 @@ import StatsCards from './components/StatsCards';
 import FilterBar from './components/FilterBar';
 import ProductTable from './components/ProductTable';
 import ProductModal from './components/ProductModal';
+import AuthModal from './components/AuthModal';
 import Toast from './components/Toast';
-import { apiService } from './services/api';
+import { apiService, authService } from './services/api';
 
 export default function App() {
+  // Auth State
+  const [user, setUser] = useState(authService.getCurrentUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Product State
   const [products, setProducts] = useState([]);
   const [stats, setStats] = useState(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
-  
+
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,16 +36,43 @@ export default function App() {
   const addToast = (message, type = 'success') => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   };
 
-  const removeToast = (id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+  const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  // ── Auth Handlers ──
+  const handleAuth = async (mode, formData) => {
+    if (mode === 'login') {
+      const data = await authService.login(formData.email, formData.password);
+      setUser(data.user);
+      setIsAuthModalOpen(false);
+      addToast(`Welcome back, ${data.user.username}!`);
+    } else {
+      const data = await authService.signup(formData.username, formData.email, formData.password);
+      setUser(data.user);
+      setIsAuthModalOpen(false);
+      addToast(`Account created! Welcome, ${data.user.username}!`);
+    }
   };
 
-  // Fetch Products List
+  const handleLogout = () => {
+    authService.logout();
+    setUser(null);
+    addToast('Logged out successfully.');
+  };
+
+  // Guard: require login for protected actions
+  const requireAuth = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      addToast('Please log in to perform this action.', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  // ── Product Data Loading ──
   const loadProducts = useCallback(async () => {
     setIsLoadingProducts(true);
     setTableApiError(null);
@@ -48,26 +81,21 @@ export default function App() {
       setProducts(response.data || []);
       setIsConnected(true);
     } catch (err) {
-      console.error('API Error loading products:', err);
       setTableApiError(err);
       setIsConnected(err.code !== 'NETWORK_ERROR');
-      addToast(err.message || 'Failed to fetch products from backend API', 'error');
+      addToast(err.message || 'Failed to fetch products', 'error');
     } finally {
       setIsLoadingProducts(false);
     }
   }, [search, category, status]);
 
-  // Fetch Inventory Metrics
   const loadStats = useCallback(async () => {
     setIsLoadingStats(true);
     try {
       const response = await apiService.getStats();
       setStats(response.data);
-    } catch (err) {
-      console.error('API Error loading stats:', err);
-    } finally {
-      setIsLoadingStats(false);
-    }
+    } catch (err) { /* silent */ }
+    finally { setIsLoadingStats(false); }
   }, []);
 
   useEffect(() => {
@@ -75,79 +103,90 @@ export default function App() {
     loadStats();
   }, [loadProducts, loadStats]);
 
-  // Open Create Modal
+  // ── CRUD Handlers (Protected) ──
   const handleOpenCreate = () => {
+    if (!requireAuth()) return;
     setEditingProduct(null);
     setModalApiError(null);
     setIsModalOpen(true);
   };
 
-  // Open Edit Modal
   const handleOpenEdit = (product) => {
+    if (!requireAuth()) return;
     setEditingProduct(product);
     setModalApiError(null);
     setIsModalOpen(true);
   };
 
-  // Submit Create or Edit Form
   const handleSubmitProduct = async (formData) => {
+    if (!requireAuth()) return;
     setIsSubmitting(true);
     setModalApiError(null);
-
     try {
       if (editingProduct) {
-        // PUT update
         await apiService.updateProduct(editingProduct.id, formData);
-        addToast(`Product "${formData.name}" updated successfully!`, 'success');
+        addToast(`Product "${formData.name}" updated successfully!`);
       } else {
-        // POST create
         await apiService.createProduct(formData);
-        addToast(`Product "${formData.name}" created successfully!`, 'success');
+        addToast(`Product "${formData.name}" created successfully!`);
       }
       setIsModalOpen(false);
       loadProducts();
       loadStats();
     } catch (err) {
-      console.error('Form Submission Error:', err);
-      setModalApiError(err);
-      addToast(err.message || 'Failed to save product', 'error');
+      if (err.statusCode === 401) {
+        authService.logout();
+        setUser(null);
+        setIsModalOpen(false);
+        setIsAuthModalOpen(true);
+        addToast('Session expired. Please log in again.', 'error');
+      } else {
+        setModalApiError(err);
+        addToast(err.message || 'Failed to save product', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Delete Product
   const handleDeleteProduct = async (product) => {
-    if (!window.confirm(`Are you sure you want to delete "${product.name}" (SKU: ${product.sku})?`)) {
-      return;
-    }
-
+    if (!requireAuth()) return;
+    if (!window.confirm(`Delete "${product.name}" (SKU: ${product.sku})?`)) return;
     try {
       await apiService.deleteProduct(product.id);
-      addToast(`Product "${product.name}" deleted successfully.`, 'success');
+      addToast(`Product "${product.name}" deleted.`);
       loadProducts();
       loadStats();
     } catch (err) {
-      console.error('Delete Error:', err);
-      addToast(err.message || 'Failed to delete product', 'error');
+      if (err.statusCode === 401) {
+        authService.logout();
+        setUser(null);
+        setIsAuthModalOpen(true);
+        addToast('Session expired. Please log in again.', 'error');
+      } else {
+        addToast(err.message || 'Delete failed', 'error');
+      }
     }
   };
 
-  // Reset & Seed Database
   const handleSeedDatabase = async () => {
-    if (!window.confirm('Reset local SQLite database to initial sample dataset?')) {
-      return;
-    }
-
+    if (!requireAuth()) return;
+    if (!window.confirm('Reset database to sample dataset?')) return;
     setIsSeeding(true);
     try {
       await apiService.seedDatabase();
-      addToast('Database reset and sample products seeded!', 'success');
+      addToast('Database reset and seeded!');
       loadProducts();
       loadStats();
     } catch (err) {
-      console.error('Seed Error:', err);
-      addToast(err.message || 'Failed to seed database', 'error');
+      if (err.statusCode === 401) {
+        authService.logout();
+        setUser(null);
+        setIsAuthModalOpen(true);
+        addToast('Session expired. Please log in again.', 'error');
+      } else {
+        addToast(err.message || 'Seed failed', 'error');
+      }
     } finally {
       setIsSeeding(false);
     }
@@ -155,17 +194,17 @@ export default function App() {
 
   return (
     <div>
-      <Navbar 
+      <Navbar
         onSeedDatabase={handleSeedDatabase}
         isSeeding={isSeeding}
         isConnected={isConnected}
+        user={user}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       <main className="main-container">
-        <StatsCards 
-          stats={stats} 
-          isLoading={isLoadingStats} 
-        />
+        <StatsCards stats={stats} isLoading={isLoadingStats} />
 
         <FilterBar
           search={search}
@@ -194,6 +233,12 @@ export default function App() {
         editingProduct={editingProduct}
         isSubmitting={isSubmitting}
         apiError={modalApiError}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuth}
       />
 
       <Toast toasts={toasts} onDismiss={removeToast} />
