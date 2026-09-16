@@ -25,7 +25,12 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Serve Static Files (Visual Web Dashboard UI)
+// Serve Static Files (Vite Client Build UI & Public Dashboard)
+const clientDistPath = path.join(__dirname, '../client/dist');
+const fs = require('fs');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Swagger API Documentation Route
