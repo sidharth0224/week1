@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Inventory REST API Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      padding-bottom: 50px;
+    }
+
+    /* Header Navbar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2rem;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary), #818cf8);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.25rem;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    .brand-text h1 { font-size: 1.25rem; font-weight: 700; background: linear-gradient(to right, #ffffff, #cbd5e1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .brand-text p { font-size: 0.75rem; color: var(--text-muted); }
+
+    .header-links {
+      display: flex;
+      gap: 0.75rem;
+    }
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      transition: all 0.2s ease;
+    }
+    .btn-link:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      backdrop-filter: blur(8px);
+    }
+    .stat-title { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.5rem; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; color: #fff; }
+    .stat-desc { font-size: 0.75rem; color: var(--accent); margin-top: 0.25rem; }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      background: var(--card-bg);
+      padding: 1rem 1.25rem;
+      border-radius: 14px;
+      border: 1px solid var(--card-border);
+    }
+    .search-filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      flex: 1;
+    }
+    .input-field, .select-field {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.55rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .input-field:focus, .select-field:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+    .btn-danger { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
+
+    /* Products Table Card */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 1rem 1.25rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+    }
+    td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.875rem;
+    }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-in_stock { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-low_stock { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-out_of_stock { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    .sku-code {
+      font-family: var(--font-code);
+      background: rgba(15, 23, 42, 0.7);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #a5b4fc;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 6px; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 520px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .modal-title { font-size: 1.15rem; font-weight: 700; }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.6rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-success { border-left: 4px solid var(--accent); }
+    .toast-error { border-left: 4px solid var(--danger); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">📦</div>
+      <div class="brand-text">
+        <h1>Inventory REST API</h1>
+        <p>Express + SQLite Server v1.0</p>
+      </div>
+    </div>
+    <div class="header-links">
+      <a href="/api-docs" target="_blank" class="btn-link">📚 Swagger Docs</a>
+      <a href="/api/v1/products" target="_blank" class="btn-link">⚡ JSON Endpoint</a>
+      <button class="btn btn-secondary" onclick="seedDatabase()">🔄 Reset & Seed</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Analytics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-title">Total Products</div>
+        <div class="stat-value" id="stat-total">--</div>
+        <div class="stat-desc">Active catalog items</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Total Stock Units</div>
+        <div class="stat-value" id="stat-stock">--</div>
+        <div class="stat-desc">Units in warehouse</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Total Valuation</div>
+        <div class="stat-value" id="stat-value">$0.00</div>
+        <div class="stat-desc">Inventory asset value</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Average Price</div>
+        <div class="stat-value" id="stat-avg">$0.00</div>
+        <div class="stat-desc">Mean item price</div>
+      </div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="controls-bar">
+      <div class="search-filter-group">
+        <input type="text" id="search-input" class="input-field" placeholder="🔍 Search by name, SKU, desc..." onkeyup="handleSearch()">
+        <select id="category-filter" class="select-field" onchange="fetchProducts()">
+          <option value="">All Categories</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Groceries">Groceries</option>
+          <option value="Home & Kitchen">Home & Kitchen</option>
+        </select>
+        <select id="status-filter" class="select-field" onchange="fetchProducts()">
+          <option value="">All Statuses</option>
+          <option value="in_stock">In Stock</option>
+          <option value="low_stock">Low Stock</option>
+          <option value="out_of_stock">Out of Stock</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Add New Product</button>
+    </div>
+
+    <!-- Products Table -->
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Product Name</th>
+            <th>SKU</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="products-tbody">
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading products...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Product Modal (Create / Edit) -->
+  <div class="modal-overlay" id="product-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Add New Product</h3>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="product-form" onsubmit="handleFormSubmit(event)">
+        <input type="hidden" id="product-id">
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="form-name" required placeholder="e.g. Wireless Mouse">
+        </div>
+        <div class="form-group">
+          <label>SKU (Stock Keeping Unit)</label>
+          <input type="text" id="form-sku" required placeholder="e.g. PERIPH-9009">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" id="form-category" required placeholder="e.g. Electronics">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label>Price ($)</label>
+            <input type="number" step="0.01" id="form-price" required placeholder="29.99">
+          </div>
+          <div class="form-group">
+            <label>Stock Quantity</label>
+            <input type="number" id="form-stock" required placeholder="50">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="form-description" rows="3" placeholder="Product details..."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <span id="toast-message">Action successful</span>
+  </div>
+
+  <script>
+    let searchTimeout = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchProducts();
+      fetchStats();
+    });
+
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/v1/products/stats');
+        const json = await res.json();
+        if (json.success) {
+          const d = json.data;
+          document.getElementById('stat-total').innerText = d.totalProducts;
+          document.getElementById('stat-stock').innerText = d.totalStockQuantity;
+          document.getElementById('stat-value').innerText = `$${d.totalInventoryValue.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+          document.getElementById('stat-avg').innerText = `$${d.averagePrice.toFixed(2)}`;
+        }
+      } catch (err) { console.error('Failed to fetch stats:', err); }
+    }
+
+    async function fetchProducts() {
+      const search = document.getElementById('search-input').value;
+      const category = document.getElementById('category-filter').value;
+      const status = document.getElementById('status-filter').value;
+
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (category) params.append('category', category);
+      if (status) params.append('status', status);
+
+      try {
+        const res = await fetch(`/api/v1/products?${params.toString()}`);
+        const json = await res.json();
+        
+        const tbody = document.getElementById('products-tbody');
+        if (!json.data || json.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No products found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = json.data.map(p => `
+          <tr>
+            <td><strong>#${p.id}</strong></td>
+            <td><strong>${p.name}</strong></td>
+            <td><span class="sku-code">${p.sku}</span></td>
+            <td>${p.category}</td>
+            <td><strong>$${p.price.toFixed(2)}</strong></td>
+            <td>${p.stock} units</td>
+            <td><span class="badge badge-${p.status}">${p.status.replace('_', ' ').toUpperCase()}</span></td>
+            <td>
+              <div class="actions-cell">
+                <button class="btn btn-secondary btn-sm" onclick="editProduct(${p.id})">✏️ Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑️ Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        showToast('Error loading products: ' + err.message, true);
+      }
+    }
+
+    function handleSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(fetchProducts, 300);
+    }
+
+    function openCreateModal() {
+      document.getElementById('modal-title').innerText = 'Add New Product';
+      document.getElementById('product-id').value = '';
+      document.getElementById('product-form').reset();
+      document.getElementById('product-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('product-modal').classList.remove('active');
+    }
+
+    async function editProduct(id) {
+      try {
+        const res = await fetch(`/api/v1/products/${id}`);
+        const json = await res.json();
+        if (json.success) {
+          const p = json.data;
+          document.getElementById('modal-title').innerText = `Edit Product #${p.id}`;
+          document.getElementById('product-id').value = p.id;
+          document.getElementById('form-name').value = p.name;
+          document.getElementById('form-sku').value = p.sku;
+          document.getElementById('form-category').value = p.category;
+          document.getElementById('form-price').value = p.price;
+          document.getElementById('form-stock').value = p.stock;
+          document.getElementById('form-description').value = p.description || '';
+          document.getElementById('product-modal').classList.add('active');
+        }
+      } catch (err) { showToast(err.message, true); }
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('product-id').value;
+      const data = {
+        name: document.getElementById('form-name').value,
+        sku: document.getElementById('form-sku').value,
+        category: document.getElementById('form-category').value,
+        price: parseFloat(document.getElementById('form-price').value),
+        stock: parseInt(document.getElementById('form-stock').value, 10),
+        description: document.getElementById('form-description').value
+      };
+
+      const isEdit = Boolean(id);
+      const url = isEdit ? `/api/v1/products/${id}` : '/api/v1/products';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const json = await res.json();
+        if (res.ok && json.success) {
+          showToast(isEdit ? 'Product updated successfully!' : 'Product created successfully!');
+          closeModal();
+          fetchProducts();
+          fetchStats();
+        } else {
+          const msg = json.error?.message || 'Action failed';
+          showToast(msg, true);
+        }
+      } catch (err) { showToast(err.message, true); }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm(`Are you sure you want to delete Product #${id}?`)) return;
+      try {
+        const res = await fetch(`/api/v1/products/${id}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          showToast(`Product #${id} deleted successfully.`);
+          fetchProducts();
+          fetchStats();
+        } else {
+          showToast(json.error?.message || 'Delete failed', true);
+        }
+      } catch (err) { showToast(err.message, true); }
+    }
+
+    async function seedDatabase() {
+      if (!confirm('Reset database to default sample dataset?')) return;
+      try {
+        const res = await fetch('/api/v1/products/seed', { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          showToast('Database reset and sample dataset loaded!');
+          fetchProducts();
+          fetchStats();
+        }
+      } catch (err) { showToast(err.message, true); }
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-message');
+      text.innerText = msg;
+      toast.className = `toast ${isError ? 'toast-error' : 'toast-success'} show`;
+      setTimeout(() => { toast.classList.remove('show'); }, 3500);
+    }
+  </script>
+</body>
+</html>

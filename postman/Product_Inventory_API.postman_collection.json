@@ -1,0 +1,138 @@
+{
+  "info": {
+    "_postman_id": "a9b8c7d6-e5f4-4321-8765-123456789abc",
+    "name": "Product Inventory REST API",
+    "description": "Complete Postman collection for Product Inventory REST API endpoints (CRUD, stats, seed, validation).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. GET All Products",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/products?page=1&limit=10&sortBy=created_at&order=DESC",
+          "host": ["{{baseUrl}}"],
+          "path": ["products"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" },
+            { "key": "category", "value": "Electronics", "disabled": true },
+            { "key": "status", "value": "in_stock", "disabled": true },
+            { "key": "search", "value": "headphones", "disabled": true }
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. GET Product By ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/products/1",
+          "host": ["{{baseUrl}}"],
+          "path": ["products", "1"]
+        }
+      }
+    },
+    {
+      "name": "3. POST Create Product (201 Created)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Smart Fitness Watch v2\",\n  \"sku\": \"SMART-9001\",\n  \"category\": \"Electronics\",\n  \"price\": 149.99,\n  \"stock\": 35,\n  \"description\": \"Waterproof smartwatch with heart rate monitoring and GPS tracking.\",\n  \"status\": \"in_stock\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/products",
+          "host": ["{{baseUrl}}"],
+          "path": ["products"]
+        }
+      }
+    },
+    {
+      "name": "4. PUT Update Product (200 OK)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Smart Fitness Watch Pro\",\n  \"sku\": \"SMART-9001\",\n  \"category\": \"Electronics\",\n  \"price\": 179.99,\n  \"stock\": 50,\n  \"description\": \"Upgraded smartwatch with AMOLED display and 14-day battery life.\",\n  \"status\": \"in_stock\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/products/1",
+          "host": ["{{baseUrl}}"],
+          "path": ["products", "1"]
+        }
+      }
+    },
+    {
+      "name": "5. PATCH Partial Update Product (200 OK)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"price\": 159.99,\n  \"stock\": 12\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/products/1",
+          "host": ["{{baseUrl}}"],
+          "path": ["products", "1"]
+        }
+      }
+    },
+    {
+      "name": "6. DELETE Product (200 OK)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/products/1",
+          "host": ["{{baseUrl}}"],
+          "path": ["products", "1"]
+        }
+      }
+    },
+    {
+      "name": "7. GET Inventory Analytics & Stats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/products/stats",
+          "host": ["{{baseUrl}}"],
+          "path": ["products", "stats"]
+        }
+      }
+    },
+    {
+      "name": "8. POST Reset & Seed Database",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/products/seed",
+          "host": ["{{baseUrl}}"],
+          "path": ["products", "seed"]
+        }
+      }
+    }
+  ]
+}
